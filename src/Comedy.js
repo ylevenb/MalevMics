@@ -5,7 +5,14 @@ import { OPEN_MICS_URL } from "./constants";
 const OpenMicFinder = () => {
   const [mics, setMics] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedDays, setSelectedDays] = useState([]);
+  const [selectedTimes, setSelectedTimes] = useState("");
+  const [selectedPlace, setSelectedPlace] = useState("");
   const [loading, setLoading] = useState(true);
+
+  const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const timeRanges = ["Daytime", "Evening", "Nighttime", "Weekends"];
+  const topPlaces = ["Manhattan", "Brooklyn", "Queens"]; // Example common places
 
   useEffect(() => {
     const fetchData = async () => {
@@ -19,8 +26,7 @@ const OpenMicFinder = () => {
           skipEmptyLines: true,
           complete: (result) => {
             console.log("Parsed Data:", result.data);
-            const reorderedMics = reorderDays(result.data);
-            setMics(reorderedMics); // Reorder days before setting mics
+            setMics(result.data); // Set the initial data
           },
           error: (error) => {
             console.error("Error parsing CSV:", error);
@@ -36,42 +42,73 @@ const OpenMicFinder = () => {
     fetchData();
   }, []);
 
-  // Function to reorder the mics by day starting from the current day
-  const reorderDays = (data) => {
-    const daysOfWeek = [
-      "Sunday",
-      "Monday",
-      "Tuesday",
-      "Wednesday",
-      "Thursday",
-      "Friday",
-      "Saturday",
-    ];
+  const filterMics = () => {
+    return mics.filter((mic) => {
+      const micDay = mic["Day"] || "";
+      const micTime = mic["Time"] || "";
+      const micPlace = mic["Borough"] || "";
 
-    // Get today's index
-    const todayIndex = new Date().getDay();
+      // Filter by search term
+      const matchesSearch = (mic["Open Mic"]?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+        (mic["Venue Name"]?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+        micDay.toLowerCase().includes(searchTerm.toLowerCase());
 
-    // Create a reordered array of days
-    const orderedDays = [
-      ...daysOfWeek.slice(todayIndex),
-      ...daysOfWeek.slice(0, todayIndex),
-    ];
+      // Filter by selected days
+      const matchesDay = selectedDays.length === 0 || selectedDays.includes(micDay);
 
-    // Sort the data based on the reordered days
-    return data.sort(
-      (a, b) => orderedDays.indexOf(a["Day"]) - orderedDays.indexOf(b["Day"])
+      // Filter by time ranges
+      const matchesTime =
+        !selectedTimes ||
+        (selectedTimes === "Daytime" && isDaytime(micTime)) ||
+        (selectedTimes === "Evening" && isEvening(micTime)) ||
+        (selectedTimes === "Nighttime" && isNighttime(micTime)) ||
+        (selectedTimes === "Weekends" && (micDay === "Saturday" || micDay === "Sunday"));
+
+      // Filter by selected place
+      const matchesPlace = !selectedPlace || micPlace === selectedPlace;
+
+      return matchesSearch && matchesDay && matchesTime && matchesPlace;
+    });
+  };
+
+  const isDaytime = (time) => {
+    const hour = parseTimeToHour(time);
+    return hour >= 6 && hour < 12;
+  };
+
+  const isEvening = (time) => {
+    const hour = parseTimeToHour(time);
+    return hour >= 12 && hour < 18;
+  };
+
+  const isNighttime = (time) => {
+    const hour = parseTimeToHour(time);
+    return hour >= 18 || hour < 6;
+  };
+
+  const parseTimeToHour = (time) => {
+    const match = time.match(/(\d+):\d+\s*(AM|PM)/i);
+    if (!match) return -1; // Invalid time format
+    let [_, hour, period] = match;
+    hour = parseInt(hour, 10);
+    if (period.toUpperCase() === "PM" && hour !== 12) hour += 12;
+    if (period.toUpperCase() === "AM" && hour === 12) hour = 0;
+    return hour;
+  };
+
+  const toggleDaySelection = (day) => {
+    setSelectedDays((prevDays) =>
+      prevDays.includes(day) ? prevDays.filter((d) => d !== day) : [...prevDays, day]
     );
   };
 
-  const filteredMics = mics.filter((mic) =>
-    (mic["Open Mic"]?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-    (mic["Venue Name"]?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-    (mic["Day"]?.toLowerCase() || "").includes(searchTerm.toLowerCase())
-  );
+  const filteredMics = filterMics();
 
   return (
     <div className="p-6">
       <h1 className="text-3xl font-bold mb-4">Open Mic Finder</h1>
+
+      {/* Search Input */}
       <div className="flex items-center mb-6">
         <input
           type="text"
@@ -81,6 +118,65 @@ const OpenMicFinder = () => {
           className="p-2 border rounded-md w-full"
         />
       </div>
+
+      {/* Filters */}
+      <div className="mb-6 space-y-4">
+        {/* Days Filter */}
+        <div>
+          <h2 className="font-bold">Filter by Day:</h2>
+          <div className="flex flex-wrap gap-2">
+            {daysOfWeek.map((day) => (
+              <button
+                key={day}
+                onClick={() => toggleDaySelection(day)}
+                className={`p-2 rounded-md border ${
+                  selectedDays.includes(day) ? "bg-blue-600 text-white" : "bg-gray-200"
+                }`}
+              >
+                {day}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Times Filter */}
+        <div>
+          <h2 className="font-bold">Filter by Time:</h2>
+          <div className="flex flex-wrap gap-2">
+            {timeRanges.map((range) => (
+              <button
+                key={range}
+                onClick={() => setSelectedTimes(range === selectedTimes ? "" : range)}
+                className={`p-2 rounded-md border ${
+                  selectedTimes === range ? "bg-blue-600 text-white" : "bg-gray-200"
+                }`}
+              >
+                {range}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Places Filter */}
+        <div>
+          <h2 className="font-bold">Filter by Place:</h2>
+          <div className="flex flex-wrap gap-2">
+            {topPlaces.map((place) => (
+              <button
+                key={place}
+                onClick={() => setSelectedPlace(place === selectedPlace ? "" : place)}
+                className={`p-2 rounded-md border ${
+                  selectedPlace === place ? "bg-blue-600 text-white" : "bg-gray-200"
+                }`}
+              >
+                {place}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Mic Listings */}
       {loading ? (
         <p>Loading...</p>
       ) : filteredMics.length ? (
