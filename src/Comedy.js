@@ -26,7 +26,8 @@ const OpenMicFinder = () => {
           skipEmptyLines: true,
           complete: (result) => {
             console.log("Parsed Data:", result.data);
-            setMics(result.data); // Set the initial data
+            const reorderedMics = reorderDays(result.data); // Reorder by day before setting
+            setMics(reorderedMics);
           },
           error: (error) => {
             console.error("Error parsing CSV:", error);
@@ -41,6 +42,22 @@ const OpenMicFinder = () => {
 
     fetchData();
   }, []);
+
+  // Function to reorder the mics by day starting from the current day
+  const reorderDays = (data) => {
+    const todayIndex = new Date().getDay();
+
+    // Rearrange days so today comes first
+    const orderedDays = [
+      ...daysOfWeek.slice(todayIndex),
+      ...daysOfWeek.slice(0, todayIndex),
+    ];
+
+    // Sort the data based on the reordered days
+    return data.sort(
+      (a, b) => orderedDays.indexOf(a["Day"]) - orderedDays.indexOf(b["Day"])
+    );
+  };
 
   const filterMics = () => {
     return mics.filter((mic) => {
