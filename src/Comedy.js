@@ -19,7 +19,8 @@ const OpenMicFinder = () => {
           skipEmptyLines: true,
           complete: (result) => {
             console.log("Parsed Data:", result.data);
-            setMics(result.data); // Parsed data as an array of objects
+            const reorderedMics = reorderDays(result.data);
+            setMics(reorderedMics); // Reorder days before setting mics
           },
           error: (error) => {
             console.error("Error parsing CSV:", error);
@@ -35,10 +36,37 @@ const OpenMicFinder = () => {
     fetchData();
   }, []);
 
+  // Function to reorder the mics by day starting from the current day
+  const reorderDays = (data) => {
+    const daysOfWeek = [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ];
+
+    // Get today's index
+    const todayIndex = new Date().getDay();
+
+    // Create a reordered array of days
+    const orderedDays = [
+      ...daysOfWeek.slice(todayIndex),
+      ...daysOfWeek.slice(0, todayIndex),
+    ];
+
+    // Sort the data based on the reordered days
+    return data.sort(
+      (a, b) => orderedDays.indexOf(a["Day"]) - orderedDays.indexOf(b["Day"])
+    );
+  };
+
   const filteredMics = mics.filter((mic) =>
-    (mic['Open Mic']?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-    (mic['Venue Name']?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-    (mic['Day']?.toLowerCase() || "").includes(searchTerm.toLowerCase())
+    (mic["Open Mic"]?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+    (mic["Venue Name"]?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+    (mic["Day"]?.toLowerCase() || "").includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -59,10 +87,14 @@ const OpenMicFinder = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredMics.map((mic, index) => (
             <div key={index} className="p-4 border rounded-md shadow-md">
-              <h2 className="font-bold">{mic['Open Mic'] || "Unknown Mic"}</h2>
-              <p>{mic['Venue Name'] || "Unknown Venue"}</p>
-              <p>{mic['Day'] || "Unknown Day"} at {mic['Time'] || "Unknown Time"}</p>
-              <p className="text-sm text-gray-600">{mic['Borough'] || "Unknown Location"}</p>
+              <h2 className="font-bold">{mic["Open Mic"] || "Unknown Mic"}</h2>
+              <p>{mic["Venue Name"] || "Unknown Venue"}</p>
+              <p>
+                {mic["Day"] || "Unknown Day"} at {mic["Time"] || "Unknown Time"}
+              </p>
+              <p className="text-sm text-gray-600">
+                {mic["Borough"] || "Unknown Location"}
+              </p>
             </div>
           ))}
         </div>
