@@ -1,25 +1,22 @@
-import logo from './logo.svg';
-import './App.css';
+import React, { useState } from "react";
+import OpenMicFinder from "./Comedy";
+import EmailCollectionDialog from "./EmailCollectionDialog";
 
-function App() {
+const App = () => {
+  const [showDialog, setShowDialog] = useState(false);
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div>
+      <OpenMicFinder />
+      <button
+        onClick={() => setShowDialog(true)}
+        className="fixed bottom-4 right-4 bg-blue-600 text-white p-4 rounded-full shadow-lg"
+      >
+        Join Beta
+      </button>
+      {showDialog && <EmailCollectionDialog onClose={() => setShowDialog(false)} />}
     </div>
   );
-}
+};
 
 export default App;
